@@ -153,3 +153,5 @@ cython_debug/
 
 # Prebuilts
 prebuilt/
+nikgapps/gapps
+nikgapps/nikgapps.zip

@@ -70,13 +70,13 @@ base_app = {
 def main(config_file):
     if config_file == "local_apks":
         config = []
-        for apk in glob("vendor/octo/local_apks/*.apk"):
+        for apk in glob("vendor/sora/local_apks/*.apk"):
             config.append({"name": apk.split(
                 "/")[-1].split(".")[0], "source": "symlink", "sl_path": os.path.abspath(apk)})
     else:
         with open(config_file) as f:
             config = yaml.load(f, Loader=yaml.CLoader)
-    target_path = "vendor/octo/prebuilt"
+    target_path = "vendor/sora/prebuilt"
     applist = []
     for app_cf in config:
         app = dict(**base_app)

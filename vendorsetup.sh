@@ -1,20 +1,11 @@
 set -eu
-if [[ ! -f "vendor/octo/.venv/bin/python3" ]]
+if [[ ! -f "vendor/sora/.venv/bin/python3" ]]
 then
     echo "Creating venv..."
-    python3 -m venv vendor/octo/.venv
+    python3 -m venv vendor/sora/.venv
 fi
-vendor/octo/.venv/bin/pip install asn1crypto
-vendor/octo/.venv/bin/pip install -r $PWD/vendor/octo/requirements.txt
-export PREBUILTS=$(vendor/octo/.venv/bin/python3 -m vendor.octo.tools.prebuilts $PWD/vendor/octo/Prebuilts.yml)
+vendor/sora/.venv/bin/pip install -r $PWD/vendor/sora/requirements.txt
+export PREBUILTS=$(vendor/sora/.venv/bin/python3 -m vendor.sora.tools.prebuilts $PWD/vendor/sora/Prebuilts.yml)
 export OCTO_PACKAGES="$PREBUILTS"
 echo "Prebuilt packages: $OCTO_PACKAGES"
 set +eu
-###########  extendrom section ##########
-export ENABLE_EXTENDROM=true
-export EXTENDROM_PACKAGES="Magisk"
-if [[ ! -d "$PWD/out/.magisk" ]]
-then
-    echo "Getting extendrom stuff..."
-    $PWD/vendor/extendrom/get_prebuilts.sh
-fi
