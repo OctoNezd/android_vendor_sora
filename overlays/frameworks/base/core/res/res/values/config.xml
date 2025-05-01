@@ -33,4 +33,8 @@ under the License.
      <string name="config_defaultBrowser" translatable="false">org.mozilla.firefox</string>
      <!-- Disable network policy warning. -->
      <integer name="config_networkPolicyDefaultWarning">-1</integer>
+     <string name="config_defaultDialer" translatable="false">com.google.android.dialer</string>
+     <string name="config_emergency_dialer_package" translatable="false">com.google.android.dialer</string>
+     <string name="default_sms_application" translatable="false">com.google.android.apps.messaging</string>
+     <string name="config_defaultSms" translatable="false">com.google.android.apps.messaging</string>
 </resources>

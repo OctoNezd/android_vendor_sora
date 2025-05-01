@@ -3,6 +3,8 @@ import re
 import shutil
 import zipfile
 
+SHOULD_SKIP_CHECKS = ["Assistant", "PrebuiltKeep"]
+SKIP_PACKAGES = ["PixelLauncher"]
 TEMPLATE_APK = """
 // {filename}
 android_app_import {
@@ -11,7 +13,8 @@ android_app_import {
 	apk: "{apk}",
 	preprocessed: true,
 	presigned: true,
-	dex_preopt: {
+    skip_preprocessed_apk_checks: {skip_checks},
+    dex_preopt: {
 		enabled: false,
 	},
 	product_specific: {product},
@@ -112,6 +115,7 @@ def create_singleline_re(name):
 files_re = create_multiline_re("file_list")
 aosp_apps_to_rm = create_multiline_re("remove_aosp_apps_from_rom")
 part_re = create_singleline_re("default_partition")
+package_re = create_singleline_re("package_title")
 if os.path.exists("gapps"):
     shutil.rmtree("gapps")
 os.makedirs("gapps")
@@ -123,9 +127,13 @@ def parse_package(item_zip: zipfile.ZipFile, name: str):
     install_sh = item_zip.open("installer.sh").read().decode()
     file_list = re.search(files_re, install_sh, re.MULTILINE).group(1).split("\n")
     partition = re.search(part_re, install_sh, re.MULTILINE).group(1)
+    package_name = re.search(package_re, install_sh, re.MULTILINE).group(1)
+    print("Extracting package", package_name, "...", end='')
+    if package_name in SKIP_PACKAGES:
+        print("SKIPPED")
+        return
     is_product = partition == "product"
     is_system_ext = partition == "system_ext"
-    print(partition)
     overrides = (
         re.search(aosp_apps_to_rm, install_sh, re.MULTILINE).group(1).split("\n")
     )
@@ -138,10 +146,13 @@ def parse_package(item_zip: zipfile.ZipFile, name: str):
             blueprint = blueprint.replace(
                 "{priveleged}", str("priv-app" in file).lower()
             )
+            if svc_name in overrides:
+                overrides.remove(svc_name)
             blueprint = blueprint.replace("{overrides}", str(overrides).replace("'", '"'))
             blueprint = blueprint.replace("{product}", str(is_product).lower())
             blueprint = blueprint.replace("{system_ext}", str(is_system_ext).lower())
             blueprint = blueprint.replace("{filename}", name)
+            blueprint = blueprint.replace("{skip_checks}", str(svc_name in SHOULD_SKIP_CHECKS).lower())
             os.makedirs("gapps/" + svc_name, exist_ok=True)
             with open("gapps/" + svc_name + "/Android.bp", "w") as f:
                 f.write(blueprint)
@@ -150,21 +161,6 @@ def parse_package(item_zip: zipfile.ZipFile, name: str):
             with source, target:
                 shutil.copyfileobj(source, target)
             common.write("\nPRODUCT_PACKAGES += " + svc_name + "\n")
-        elif file.endswith(".xml") or file.endswith(".der"):
-            permname = file.split("/")[-1]
-            source = item_zip.open(file)
-            os.makedirs("gapps/xmls", exist_ok=True)
-            target = open("gapps/xmls/" + permname, "wb")
-            with source, target:
-                shutil.copyfileobj(source, target)
-            common.write(
-                "\nPRODUCT_COPY_FILES += vendor/sora/nikgapps/gapps/xmls/"
-                + permname
-                + ":$(TARGET_COPY_OUT_"
-                + partition.upper()
-                + ")"
-                + file.replace("___", "/")
-            )
         elif file.endswith(".so"):
             lib = file.split("/")[-1]
             if lib not in libs:
@@ -185,10 +181,25 @@ def parse_package(item_zip: zipfile.ZipFile, name: str):
                 shutil.copyfileobj(source, target)
             common.write("\nPRODUCT_PACKAGES += " + svc_name + "\n")
         else:
+            permname = file.split("/")[-1]
+            print("Unknown file type at", permname, "copying to PRODUCT_COPY_FILES", "part:", partition)
+            source = item_zip.open(file)
+            os.makedirs("gapps/xmls", exist_ok=True)
+            target = open("gapps/xmls/" + permname, "wb")
+            with source, target:
+                shutil.copyfileobj(source, target)
+            common.write(
+                "\nPRODUCT_COPY_FILES += vendor/sora/nikgapps/gapps/xmls/"
+                + permname
+                + ":$(TARGET_COPY_OUT_"
+                + partition.upper()
+                + ")"
+                + file.replace("___", "/")
+            )
             print("Unknown file type:", file.split(".")[-1], "at", file)
     for lib, libdesc in libs.items():
-        os.makedirs("gapps/libs/" + lib + "/64")
-        os.makedirs("gapps/libs/" + lib + "/32")
+        os.makedirs("gapps/libs/" + lib + "/64", exist_ok=True)
+        os.makedirs("gapps/libs/" + lib + "/32", exist_ok=True)
         files = libdesc["files"]
         for file in files:
             filename = file.split("/")[-1]
@@ -216,6 +227,7 @@ def parse_package(item_zip: zipfile.ZipFile, name: str):
         with open("gapps/libs/" + lib + "/Android.bp", "w") as f:
             f.write(blueprint)
         common.write(f"\nPRODUCT_PACKAGES += {svc_name}\n")
+    print("OK")
 
 def parse_nikgapps(nikgapps_zip: zipfile.ZipFile):
     for file in nikgapps_zip.filelist:

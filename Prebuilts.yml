@@ -1,9 +1,8 @@
-- name: F-Droid
+- name: F-Droid-Basic
   source: fdroid
-  packageName: org.fdroid.fdroid
-- name: Fenix
-  source: ghrelease
-  repo: mozilla-mobile/fenix
-  regex: fenix-.*-arm64-v8a\.apk
+  packageName: org.fdroid.basic
+- name: Fennec
+  source: fdroid
   compressed: true
+  packageName: org.mozilla.fennec_fdroid
   overrides: Jelly Browser2 CarHTMLViewer
